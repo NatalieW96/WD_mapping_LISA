@@ -7,6 +7,7 @@ import numpy as np
 from matplotlib import cm
 import random
 import matplotlib.pyplot as plt
+import cPickle as pickle
 
 #function of plot the cylinder defined as MW
 def data_for_cylinder_along_z(center_x,center_y,radius,height_z):
@@ -38,7 +39,7 @@ y=np.zeros((N,1))
 #Generate random coordinates
 for i in np.arange(N):
     theta[i]=random.uniform(0, 2*np.pi)
-    rho[i]=random.uniform(0,r0)
+    rho[i]=r0*np.sqrt(random.uniform(0,1.0))
     z[i]=random.uniform(0,h0)
     
 x=rho*np.cos(theta)	#x coordinates of WDs
@@ -46,10 +47,15 @@ y=rho*np.sin(theta)	#y coordinates of WD
 xS=rhoS*np.cos(thetaS)	#x coordinate of Sun
 yS=rhoS*np.cos(thetaS)	#y coordinate of Sun
 
+#Cartesian coordinaes in system where Sun is origin
+X=x-xS
+Y=y-yS
+Z=z-zS
+
 #Setting another coordinate system in spherical coordinates where the Sun in the origin
-d=np.sqrt((z-zS)**2 + rho**2 +rhoS**2 - 2*rho*rhoS*np.cos(theta - thetaS))	#distance to WD (r in classical spherical coordinates)
-phi= np.pi - (np.arcsin(rho*np.sin(theta - thetaS)/d)-thetaS)	#azimuth angle to WD
-theta2= np.arcsin((z-zS)/d)	#polar angle to WD
+r = np.sqrt(X**2 +Y**2 +Z**2)
+theta2= np.arccos(Z/r)
+phi = np.arctan(Y/X) 
 
 #Plot 3D graph
 fig = plt.figure()
@@ -71,6 +77,24 @@ for xb, yb, zb in zip(Xb, Yb, Zb):
 Xc,Yc,Zc = data_for_cylinder_along_z(0,0,r0,h0)
 ax.plot_surface(Xc, Yc, Zc, alpha=0.5)
 
+fig=plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.set_aspect('equal')
+ax.scatter(X, Y, Z)
+ax.scatter(0, 0, 0, color = 'red')
+
+#Making axes same length
+max_range = np.array([X.max()-X.min(), Y.max()-Y.min(), Z.max()-Z.min()]).max()
+Xd = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][0].flatten() + 0.5*(X.max()+X.min())
+Yd = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][1].flatten() + 0.5*(Y.max()+Y.min())
+Zd = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][2].flatten() + 0.5*(Z.max()+Z.min())
+
+for xd, yd, zd in zip(Xd, Yd, Zd):
+   ax.plot([xd], [yd], [zd], 'w')
+
+
 plt.show()
 
+data = np.array([[X, Y, Z],[r, theta2, phi]])
+pickle.dump(data, open('WD_positions.sav', 'wb'))
 exit()
