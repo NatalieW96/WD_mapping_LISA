@@ -21,7 +21,7 @@ def data_for_cylinder_along_z(center_x,center_y,radius,height_z):
 #Define Milky Way parameters
 h0=1000			#height of MW
 r0=100000  		#radius of MW
-N=1000			#number of binary WDs
+N=1000   		#number of binary WDs
 
 #Sun's parameters
 rhoS=25000
@@ -34,13 +34,22 @@ rho=np.zeros((N,1))
 z=np.zeros((N,1))
 x=np.zeros((N,1))
 y=np.zeros((N,1))
-
+#Initialise parameters
+psi=np.zeros((N,1))
+iota=np.zeros((N,1))
+A0=np.zeros((N,1))
+phi0=np.zeros((N,1))
+omega=np.zeros((N,1))
 
 #Generate random coordinates
 for i in np.arange(N):
     theta[i]=random.uniform(0, 2*np.pi)
     rho[i]=r0*np.sqrt(random.uniform(0,1.0))
     z[i]=random.uniform(0,h0)
+    psi[i]=random.uniform(0, 2*np.pi)
+    iota[i]=random.uniform(0, 2*np.pi)
+    phi0[i]=random.uniform(0, 2*np.pi)
+    omega[i]=random.uniform(10e-3, 10e-2)
     
 x=rho*np.cos(theta)	#x coordinates of WDs
 y=rho*np.sin(theta)	#y coordinates of WD
@@ -56,6 +65,8 @@ Z=z-zS
 r = np.sqrt(X**2 +Y**2 +Z**2)
 theta2= np.arccos(Z/r)
 phi = np.arctan(Y/X) 
+
+A0= 1.0/r #gravitational wave amplitude
 
 #Plot 3D graph
 fig = plt.figure()
@@ -95,6 +106,8 @@ for xd, yd, zd in zip(Xd, Yd, Zd):
 
 plt.show()
 
-data = np.array([[X, Y, Z],[r, theta2, phi]])
-pickle.dump(data, open('WD_positions.sav', 'wb'))
+positions = np.array([[X, Y, Z],[r, theta2, phi]])
+pickle.dump(positions, open('WD_positions.sav', 'wb'))
+parameters = np.array([psi, iota, A0, omega, phi0]) 
+pickle.dump(parameters, open('WD_parameters.sav', 'wb'))
 exit()
