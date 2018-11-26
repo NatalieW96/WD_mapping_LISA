@@ -2,6 +2,7 @@
 #Generates a model of the Milky Way for white dwarf binaries
 ######################################################################################################
 
+import healpy
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from matplotlib import cm
@@ -27,6 +28,7 @@ N=1000   		#number of binary WDs
 rhoS=25000
 thetaS=0.0
 zS=500
+beta= np.pi*60.2/180 #angle of ecliptic
 
 #Initialise coordinates
 theta=np.zeros((N,1))
@@ -40,6 +42,7 @@ iota=np.zeros((N,1))
 A0=np.zeros((N,1))
 phi0=np.zeros((N,1))
 omega=np.zeros((N,1))
+
 
 #Generate random coordinates
 for i in np.arange(N):
@@ -56,15 +59,24 @@ y=rho*np.sin(theta)	#y coordinates of WD
 xS=rhoS*np.cos(thetaS)	#x coordinate of Sun
 yS=rhoS*np.cos(thetaS)	#y coordinate of Sun
 
-#Cartesian coordinaes in system where Sun is origin
+#Cartesian coordinaes in system where Sun is origin and X-Y plane is galactic plane
 X=x-xS
 Y=y-yS
 Z=z-zS
 
-#Setting another coordinate system in spherical coordinates where the Sun in the origin
+#Cartesian coordinaes in system where Sun is origin and X-Y plane is ecliptic plane
+R=[[1, 0, 0],[0, np.cos(beta), np.sin(beta)],[0, -np.sin(beta), np.cos(beta)]] #Rotational matrix using Euler angles 
+coords=np.transpose(np.array([X,Y,Z])).reshape(1000,3,1) #vectors of X,Y,Z
+ecliptic=np.transpose(np.einsum("ij,kjl->kil",R,coords)) #Batch matric multipication to get new X, Y, Z
+
+#Setting Galactic coordinates
 r = np.sqrt(X**2 +Y**2 +Z**2)
-theta2= np.arccos(Z/r)
-phi = np.arctan(Y/X) 
+theta_gal= np.arccos(Z/r)
+phi_gal = np.arctan(Y/X) 
+
+#Setting Ecliptic coordinates
+theta_ec= np.array([np.arccos(ecliptic[0][2]/r)])
+phi_ec= np.array([np.arctan(ecliptic[0][1]/ecliptic[0][0])])
 
 A0= 1.0/r #gravitational wave amplitude
 
@@ -88,10 +100,11 @@ for xb, yb, zb in zip(Xb, Yb, Zb):
 Xc,Yc,Zc = data_for_cylinder_along_z(0,0,r0,h0)
 ax.plot_surface(Xc, Yc, Zc, alpha=0.5)
 
+#Plotting Ecplitc coordinates
 fig=plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.set_aspect('equal')
-ax.scatter(X, Y, Z)
+ax.scatter(ecliptic[0][0], ecliptic[0][1],ecliptic[0][2])
 ax.scatter(0, 0, 0, color = 'red')
 
 #Making axes same length
@@ -106,7 +119,7 @@ for xd, yd, zd in zip(Xd, Yd, Zd):
 
 plt.show()
 
-positions = np.array([[X, Y, Z],[r, theta2, phi]])
+positions = np.array([[X, Y, Z],[r, theta_gal, phi_gal], [r, theta_ec, phi_ec]])
 pickle.dump(positions, open('WD_positions.sav', 'wb'))
 parameters = np.array([psi, iota, A0, omega, phi0]) 
 pickle.dump(parameters, open('WD_parameters.sav', 'wb'))
