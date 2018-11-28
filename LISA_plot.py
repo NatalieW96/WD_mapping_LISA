@@ -26,7 +26,7 @@ def phi_bar(phi0, T, t):
     return phi0 +2*np.pi*t/T
 
 #Function to give response
-def response(A0, Omega, t, Phi0, psi, iota, l1, l2, h_ab, R_ec):
+def response(A0, Omega, t, Phi0, psi, iota, l1, l2, h_ab, alpha, beta):
     h_plus = 0.5*(1+np.cos(iota)**2)*A0*np.sin(Omega*t - Phi0) #plus response from WD
     h_x = np.cos(iota)*A0*np.cos(Omega*t - Phi0)	#cross response from WD
     h_ab[:,0,0] = h_plus
@@ -35,6 +35,10 @@ def response(A0, Omega, t, Phi0, psi, iota, l1, l2, h_ab, R_ec):
     h_ab[:,1,1] = -h_plus
     R = np.array([[np.cos(psi),np.sin(psi), 0.0], [-np.sin(psi), np.cos(psi), 0.0], [0,0.0,1.0]])
     h_ab = np.transpose(R)*h_ab*R
+    Ry=np.array([[np.cos(beta), 0, -np.sin(beta)],[0,1,0],[np.sin(beta),0,np.cos(beta)]]) #unnecessary?
+    Rz=np.array([[np.cos(alpha), np.sin(alpha), 0],[-np.sin(alpha), np.cos(alpha), 0],[0,0,1]])
+    R_ec = Ry*Rz #Euler angle transformation matrix from WD frame into ecliptic frame
+    h_ab=np.transpose(R_ec)*h_ab*R_ec
     h_ab2 = np.einsum('kil,lj->kij',np.einsum('ij,kjl->kil',np.transpose(R_ec),h_ab),R_ec) #Rotation of ecliptic
     D_ij = (np.einsum('ki,kj->kij', l1, l1) - np.einsum('ki,kj->kij', l2, l2)) #response at LISA for WD q at time j
     h_t = np.einsum('kij,kij->k',D_ij,h_ab2)
@@ -47,7 +51,7 @@ with open('WD_parameters.sav') as data:
     WD_params=pickle.load(data)
 
 T=3.15e7		#seconds in a year
-N=1000			#number of time intervals
+N=10000			#number of time intervals
 dt=T/N			#time interval
 df=1.0/T		#frequency interval
 phi0=0			#starting phi value	
@@ -66,8 +70,7 @@ theta_b=np.pi/2
 omega=2*np.pi/T		#angular speed of orbit
 time = np.arange(0,T,dt)#time array
 z_c=0.0			#LISA orbit plane in x, y
-beta= np.pi*60.2/180 	#angle of ecliptic
-R_ec = [[1, 0, 0],[0, np.cos(beta), np.sin(beta)],[0, -np.sin(beta), np.cos(beta)]] #ecliptic rotation matrix
+
 #WD parameters
 psi=WD_params[0] 
 iota=WD_params[1]
@@ -76,7 +79,11 @@ Omega=WD_params[3]
 Phi0=WD_params[4]
 N_WD=len(WD_pos[0,0]) 	#Number of WDs
 h_ab=np.zeros((N_WD,N,3,3))#signal tensor for WDs
-
+#Euler angles for ecliptic transformation of WDs
+Z_WD=WD_pos[3]
+Z_WD=-Z_WD/np.sqrt(Z_WD[0]**2 + Z_WD[1]**2 + Z_WD[2]**2) #normalised WD Z axis vector in ecliptic frame
+alpha = np.arccos(-Z_WD[1]/np.sqrt(1-Z_WD[2]**2)) 
+beta = np.arccos(Z_WD[2])
 
 #Fill in l_i vector at each point in time for each arm
 for i in np.arange(n):	
@@ -93,7 +100,7 @@ V=[v_12, v_23, v_31]	#array of vertices
   
 #Go through each WD binary and calulate response at any given time
 for q in np.arange(N_WD):
-    h_i=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, R_ec)
+    h_i=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
     h_I = h_I + h_i #sum all WD responses at time j
     print '{}: done {}/{}'.format(tm.asctime(),q+1,N_WD)
 

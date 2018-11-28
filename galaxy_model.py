@@ -2,6 +2,8 @@
 #Generates a model of the Milky Way for white dwarf binaries
 ######################################################################################################
 
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 import healpy
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
@@ -22,7 +24,7 @@ def data_for_cylinder_along_z(center_x,center_y,radius,height_z):
 #Define Milky Way parameters
 h0=1000			#height of MW
 r0=100000  		#radius of MW
-N=1000   		#number of binary WDs
+N=1000    		#number of binary WDs
 
 #Sun's parameters
 rhoS=25000
@@ -64,19 +66,21 @@ X=x-xS
 Y=y-yS
 Z=z-zS
 
-#Cartesian coordinaes in system where Sun is origin and X-Y plane is ecliptic plane
-R=[[1, 0, 0],[0, np.cos(beta), np.sin(beta)],[0, -np.sin(beta), np.cos(beta)]] #Rotational matrix using Euler angles 
-coords=np.transpose(np.array([X,Y,Z])).reshape(1000,3,1) #vectors of X,Y,Z
-ecliptic=np.transpose(np.einsum("ij,kjl->kil",R,coords)) #Batch matric multipication to get new X, Y, Z
-
 #Setting Galactic coordinates
 r = np.sqrt(X**2 +Y**2 +Z**2)
-theta_gal= np.arccos(Z/r)
-phi_gal = np.arctan(Y/X) 
+theta_gal=np.arccos(Z/r)
+lon_gal=np.arctan2(Y,X)
+lat_gal=np.pi/2-theta_gal
 
 #Setting Ecliptic coordinates
-theta_ec= np.array([np.arccos(ecliptic[0][2]/r)])
-phi_ec= np.array([np.arctan(ecliptic[0][1]/ecliptic[0][0])])
+coords_gal=SkyCoord(lon_gal*u.radian, lat_gal*u.radian, frame='galactic', unit= (u.radian, u.radian))
+coords_ec=coords_gal.barycentrictrueecliptic
+lon_ec=coords_ec.lon.radian
+lat_ec=coords_ec.lat.radian
+theta_ec=np.pi/2-lat_ec
+X_ec=r*np.sin(theta_ec)*np.cos(lon_ec)
+Y_ec=r*np.sin(theta_ec)*np.sin(lon_ec)
+Z_ec=r*np.cos(theta_ec)
 
 A0= 1.0/r #gravitational wave amplitude
 
@@ -84,27 +88,27 @@ A0= 1.0/r #gravitational wave amplitude
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.set_aspect('equal')
-ax.scatter(x, y, z)
-ax.scatter(xS, yS, zS, color = 'red')
+ax.scatter(X, Y, Z)
+ax.scatter(0, 0, 0, color = 'red')
 
 #Making axes same length
-max_range = np.array([x.max()-x.min(), y.max()-y.min(), z.max()-z.min()]).max()
-Xb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][0].flatten() + 0.5*(x.max()+x.min())
-Yb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][1].flatten() + 0.5*(y.max()+y.min())
-Zb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][2].flatten() + 0.5*(z.max()+z.min())
+max_range = np.array([X.max()-X.min(), Y.max()-Y.min(), z.max()-z.min()]).max()
+Xb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][0].flatten() + 0.5*(X.max()+X.min())
+Yb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][1].flatten() + 0.5*(Y.max()+Y.min())
+Zb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][2].flatten() + 0.5*(Z.max()+Z.min())
 
 for xb, yb, zb in zip(Xb, Yb, Zb):
    ax.plot([xb], [yb], [zb], 'w')
 
 #Adding cyclinder defined as Milky Way
-Xc,Yc,Zc = data_for_cylinder_along_z(0,0,r0,h0)
-ax.plot_surface(Xc, Yc, Zc, alpha=0.5)
+#Xc,Yc,Zc = data_for_cylinder_along_z(0,0,r0,h0)
+#ax.plot_surface(Xc, Yc, Zc, alpha=0.5)
 
 #Plotting Ecplitc coordinates
 fig=plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.set_aspect('equal')
-ax.scatter(ecliptic[0][0], ecliptic[0][1],ecliptic[0][2])
+ax.scatter(X_ec, Y_ec, Z_ec)
 ax.scatter(0, 0, 0, color = 'red')
 
 #Making axes same length
@@ -119,7 +123,7 @@ for xd, yd, zd in zip(Xd, Yd, Zd):
 
 plt.show()
 
-positions = np.array([[X, Y, Z],[r, theta_gal, phi_gal], [r, theta_ec, phi_ec]])
+positions = np.array([[X, Y, Z],[r, lon_gal, lat_gal],[X_ec, Y_ec, Z_ec], [r, lon_ec, lat_ec]])
 pickle.dump(positions, open('WD_positions.sav', 'wb'))
 parameters = np.array([psi, iota, A0, omega, phi0]) 
 pickle.dump(parameters, open('WD_parameters.sav', 'wb'))
