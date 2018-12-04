@@ -51,7 +51,7 @@ with open('WD_parameters.sav') as data:
     WD_params=pickle.load(data)
 
 T=3.15e7		#seconds in a year
-N=10000			#number of time intervals
+N=1000			#number of time intervals
 dt=T/N			#time interval
 df=1.0/T		#frequency interval
 phi0=0			#starting phi value	
@@ -100,7 +100,7 @@ V=[v_12, v_23, v_31]	#array of vertices
   
 #Go through each WD binary and calulate response at any given time
 for q in np.arange(N_WD):
-    h_i=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
+    h_i=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
     h_I = h_I + h_i #sum all WD responses at time j
     print '{}: done {}/{}'.format(tm.asctime(),q+1,N_WD)
 

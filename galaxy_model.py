@@ -24,7 +24,7 @@ def data_for_cylinder_along_z(center_x,center_y,radius,height_z):
 #Define Milky Way parameters
 h0=1000			#height of MW
 r0=100000  		#radius of MW
-N=1000    		#number of binary WDs
+N=100000    		#number of binary WDs
 
 #Sun's parameters
 rhoS=25000
