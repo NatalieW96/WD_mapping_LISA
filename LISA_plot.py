@@ -34,11 +34,11 @@ def response(A0, Omega, t, Phi0, psi, iota, l1, l2, h_ab, alpha, beta):
     h_ab[:,1,0] = h_x
     h_ab[:,1,1] = -h_plus
     R = np.array([[np.cos(psi),np.sin(psi), 0.0], [-np.sin(psi), np.cos(psi), 0.0], [0,0.0,1.0]])
-    h_ab = np.transpose(R)*h_ab*R
+    h_ab = np.matmul(np.matmul(np.transpose(R),h_ab),R)
     Ry=np.array([[np.cos(beta), 0, -np.sin(beta)],[0,1,0],[np.sin(beta),0,np.cos(beta)]]) #unnecessary?
     Rz=np.array([[np.cos(alpha), np.sin(alpha), 0],[-np.sin(alpha), np.cos(alpha), 0],[0,0,1]])
-    R_ec = Ry*Rz #Euler angle transformation matrix from WD frame into ecliptic frame
-    h_ab=np.transpose(R_ec)*h_ab*R_ec
+    R_ec = np.matmul(Ry,Rz) #Euler angle transformation matrix from WD frame into ecliptic frame
+    h_ab=np.matmul(np.matmul(np.transpose(R_ec),h_ab),R_ec)
     h_ab2 = np.einsum('kil,lj->kij',np.einsum('ij,kjl->kil',np.transpose(R_ec),h_ab),R_ec) #Rotation of ecliptic
     D_ij = (np.einsum('ki,kj->kij', l1, l1) - np.einsum('ki,kj->kij', l2, l2)) #response at LISA for WD q at time j
     h_t = np.einsum('kij,kij->k',D_ij,h_ab2)
@@ -51,7 +51,7 @@ with open('WD_parameters.sav') as data:
     WD_params=pickle.load(data)
 
 T=3.15e7		#seconds in a year
-N=1000			#number of time intervals
+N=100000			#number of time intervals
 dt=T/N			#time interval
 df=1.0/T		#frequency interval
 phi0=0			#starting phi value	
@@ -62,7 +62,9 @@ r=(L/2.0)/np.cos(np.pi/6.0) #length of vector to vertex
 phi_b=np.zeros((N,3))	#phi_b array
 l_i=np.zeros((N,3,3))	#l_i array
 V=np.zeros((N,3,3))	#vertices coordinates
-h_I=np.zeros(N)   #total response
+h_I1=np.zeros(N)   #total response interferomenter 1
+h_I2=np.zeros(N)   #total response interferomenter 2
+h_I3=np.zeros(N)   #total response interferomenter 3
 h_ab2=np.zeros((N,3,3))
 h_mod=np.zeros((N))	#modulus of response
 n=3			#number of arms
@@ -80,10 +82,11 @@ Phi0=WD_params[4]
 N_WD=len(WD_pos[0,0]) 	#Number of WDs
 h_ab=np.zeros((N_WD,N,3,3))#signal tensor for WDs
 #Euler angles for ecliptic transformation of WDs
-Z_WD=WD_pos[3]
+Z_WD=WD_pos[2]
 Z_WD=-Z_WD/np.sqrt(Z_WD[0]**2 + Z_WD[1]**2 + Z_WD[2]**2) #normalised WD Z axis vector in ecliptic frame
 alpha = np.arccos(-Z_WD[1]/np.sqrt(1-Z_WD[2]**2)) 
 beta = np.arccos(Z_WD[2])
+
 
 #Fill in l_i vector at each point in time for each arm
 for i in np.arange(n):	
@@ -99,27 +102,42 @@ V=[v_12, v_23, v_31]	#array of vertices
 
   
 #Go through each WD binary and calulate response at any given time
+
 for q in np.arange(N_WD):
-    h_i=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
-    h_I = h_I + h_i #sum all WD responses at time j
+    h_i1=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
+    h_I1 = h_I1 + h_i1 #sum all WD responses at time j
+    h_i2=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,1], l_i[:,2], h_ab2, alpha[q,0], beta[q,0])
+    h_I2 = h_I2 + h_i2 #sum all WD responses at time j
+    h_i3=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
+    h_I3 = h_I3 + h_i3 #sum all WD responses at time j
     print '{}: done {}/{}'.format(tm.asctime(),q+1,N_WD)
 
 #for j in np.arange(N):
 #    h_mod[j]=np.linalg.norm(h_I[j])
 
-h_f=np.fft.rfft(h_I)*dt
+print h_I1+h_I2+h_I3
+
+h_f1=np.fft.rfft(h_I1)*dt
+h_f2=np.fft.rfft(h_I2)*dt
+h_f3=np.fft.rfft(h_I3)*dt
 Nf = N//2 + 1
 freq=df*np.arange(Nf)
 fig = plt.figure()
-plt.plot(time, h_I)
+plt.plot(time, h_I1)
+plt.plot(time, h_I2)
+plt.plot(time, h_I3)
 plt.xlabel('t (s)')
 plt.ylabel('h(t)')
 fig = plt.figure()
-plt.plot(time, h_I**2)
+plt.plot(time, h_I1**2)
+plt.plot(time, h_I2**2)
+plt.plot(time, h_I3**2)
 plt.xlabel('t (s)')
 plt.ylabel('|h(t)|^2')
 fig = plt.figure()
-plt.loglog(freq, h_f*np.conj(h_f))
+plt.loglog(freq, h_f1*np.conj(h_f1))
+plt.loglog(freq, h_f2*np.conj(h_f2))
+plt.loglog(freq, h_f3*np.conj(h_f3))
 plt.xlabel('f (Hz)')
 plt.ylabel('|h(f)|^2')
 plt.show()
@@ -159,4 +177,3 @@ plt.show()
 
 
 exit()
-
