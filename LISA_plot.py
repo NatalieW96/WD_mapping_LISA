@@ -51,7 +51,7 @@ with open('WD_parameters.sav') as data:
     WD_params=pickle.load(data)
 
 T=3.15e7		#seconds in a year
-N=100000			#number of time intervals
+N=1000			#number of time intervals
 dt=T/N			#time interval
 df=1.0/T		#frequency interval
 phi0=0			#starting phi value	
@@ -86,6 +86,7 @@ Z_WD=WD_pos[2]
 Z_WD=-Z_WD/np.sqrt(Z_WD[0]**2 + Z_WD[1]**2 + Z_WD[2]**2) #normalised WD Z axis vector in ecliptic frame
 alpha = np.arccos(-Z_WD[1]/np.sqrt(1-Z_WD[2]**2)) 
 beta = np.arccos(Z_WD[2])
+h_a_h_b_exp=np.zeros((N,3,3))
 
 
 #Fill in l_i vector at each point in time for each arm
@@ -111,11 +112,15 @@ for q in np.arange(N_WD):
     h_i3=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
     h_I3 = h_I3 + h_i3 #sum all WD responses at time j
     print '{}: done {}/{}'.format(tm.asctime(),q+1,N_WD)
-
+    #expectation value calculations
+    for t in np.arange(N):
+        h_a_h_b_exp[t]=  h_a_h_b_exp[t] +np.array([[h_I1[t]*h_I1[t],h_I1[t]*h_I2[t],h_I1[t]*h_I3[t]],[h_I2[t]*h_I1[t],h_I2[t]*h_I2[t],h_I2[t]*h_I3[t]], [h_I3[t]*h_I1[t],h_I3[t]*h_I2[t],h_I3[t]*h_I3[t]]])
+      
+h_a_h_b_exp=h_a_h_b_exp/N_WD
+fig = plt.figure()
+plt.plot(time, h_a_h_b_exp[:,0,0])
 #for j in np.arange(N):
 #    h_mod[j]=np.linalg.norm(h_I[j])
-
-print h_I1+h_I2+h_I3
 
 h_f1=np.fft.rfft(h_I1)*dt
 h_f2=np.fft.rfft(h_I2)*dt
@@ -130,8 +135,8 @@ plt.xlabel('t (s)')
 plt.ylabel('h(t)')
 fig = plt.figure()
 plt.plot(time, h_I1**2)
-plt.plot(time, h_I2**2)
-plt.plot(time, h_I3**2)
+#plt.plot(time, h_I2**2)
+#plt.plot(time, h_I3**2)
 plt.xlabel('t (s)')
 plt.ylabel('|h(t)|^2')
 fig = plt.figure()
@@ -143,6 +148,7 @@ plt.ylabel('|h(f)|^2')
 plt.show()
 
 exit()
+
 #orbit coordinates
 u = np.linspace(0,  2*np.pi, 100)
 x = R*np.cos(u)
