@@ -44,6 +44,26 @@ def response(A0, Omega, t, Phi0, psi, iota, l1, l2, h_ab, alpha, beta):
     h_t = np.einsum('kij,kij->k',D_ij,h_ab2)
     return h_t
 
+#Function to give shape
+def expectation(A0, psi, iota, l1, l2, h_ab, alpha, beta):
+    h_plus = 0.5*(1+np.cos(iota)**2)*A0*1/np.sqrt(2) #plus response from WD
+    h_x = np.cos(iota)*A0*1/np.sqrt(2)	#cross response from WD
+    h_ab[:,0,0] = h_plus
+    h_ab[:,0,1] = h_x
+    h_ab[:,1,0] = h_x
+    h_ab[:,1,1] = -h_plus
+    R = np.array([[np.cos(psi),np.sin(psi), 0.0], [-np.sin(psi), np.cos(psi), 0.0], [0,0.0,1.0]])
+    h_ab = np.matmul(np.matmul(np.transpose(R),h_ab),R)
+    Ry=np.array([[np.cos(beta), 0, -np.sin(beta)],[0,1,0],[np.sin(beta),0,np.cos(beta)]]) #unnecessary?
+    Rz=np.array([[np.cos(alpha), np.sin(alpha), 0],[-np.sin(alpha), np.cos(alpha), 0],[0,0,1]])
+    R_ec = np.matmul(Ry,Rz) #Euler angle transformation matrix from WD frame into ecliptic frame
+    h_ab=np.matmul(np.matmul(np.transpose(R_ec),h_ab),R_ec)
+    h_ab2 = np.einsum('kil,lj->kij',np.einsum('ij,kjl->kil',np.transpose(R_ec),h_ab),R_ec) #Rotation of ecliptic
+    D_ij = (np.einsum('ki,kj->kij', l1, l1) - np.einsum('ki,kj->kij', l2, l2)) #response at LISA for WD q at time j
+    h_t = np.einsum('kij,kij->k',D_ij,h_ab2)
+    return h_t
+
+
 #Load WD positions and parameter files
 with open('WD_positions.sav') as data:
     WD_pos=pickle.load(data)
@@ -51,7 +71,7 @@ with open('WD_parameters.sav') as data:
     WD_params=pickle.load(data)
 
 T=3.15e7		#seconds in a year
-N=1000			#number of time intervals
+N=10000			#number of time intervals
 dt=T/N			#time interval
 df=1.0/T		#frequency interval
 phi0=0			#starting phi value	
@@ -65,6 +85,9 @@ V=np.zeros((N,3,3))	#vertices coordinates
 h_I1=np.zeros(N)   #total response interferomenter 1
 h_I2=np.zeros(N)   #total response interferomenter 2
 h_I3=np.zeros(N)   #total response interferomenter 3
+h_I1exp=np.zeros(N)   #total response interferomenter 1
+h_I2exp=np.zeros(N)   #total response interferomenter 2
+h_I3exp=np.zeros(N)   #total response interferomenter 3
 h_ab2=np.zeros((N,3,3))
 h_mod=np.zeros((N))	#modulus of response
 n=3			#number of arms
@@ -111,14 +134,20 @@ for q in np.arange(N_WD):
     h_I2 = h_I2 + h_i2 #sum all WD responses at time j
     h_i3=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
     h_I3 = h_I3 + h_i3 #sum all WD responses at time j
+    h_i1exp=expectation(A0[q,0], psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
+    h_I1exp = h_I1exp + h_i1exp #sum all WD responses at time j
+    h_i2exp=expectation(A0[q,0], psi[q,0], iota[q,0], l_i[:,1], l_i[:,2], h_ab2, alpha[q,0], beta[q,0])
+    h_I2exp = h_I2exp + h_i2exp #sum all WD responses at time j
+    h_i3exp=expectation(A0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
+    h_I3exp = h_I3exp + h_i3exp #sum all WD responses at time j
     print '{}: done {}/{}'.format(tm.asctime(),q+1,N_WD)
     #expectation value calculations
-    for t in np.arange(N):
-        h_a_h_b_exp[t]=  h_a_h_b_exp[t] +np.array([[h_I1[t]*h_I1[t],h_I1[t]*h_I2[t],h_I1[t]*h_I3[t]],[h_I2[t]*h_I1[t],h_I2[t]*h_I2[t],h_I2[t]*h_I3[t]], [h_I3[t]*h_I1[t],h_I3[t]*h_I2[t],h_I3[t]*h_I3[t]]])
+
+h_a_h_b_exp= np.array([[h_I1exp*h_I1exp,h_I1exp*h_I2exp,h_I1exp*h_I3exp],[h_I2exp*h_I1exp,h_I2exp*h_I2exp,h_I2exp*h_I3exp], [h_I3exp*h_I1exp,h_I3exp*h_I2exp,h_I3exp*h_I3exp]])
       
 h_a_h_b_exp=h_a_h_b_exp/N_WD
 fig = plt.figure()
-plt.plot(time, h_a_h_b_exp[:,0,0])
+plt.plot(time, h_a_h_b_exp[0,0])
 #for j in np.arange(N):
 #    h_mod[j]=np.linalg.norm(h_I[j])
 
