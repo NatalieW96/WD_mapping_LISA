@@ -11,6 +11,7 @@ from matplotlib import cm
 import random
 import matplotlib.pyplot as plt
 import cPickle as pickle
+import time as tm
 
 #function of plot the cylinder defined as MW
 def data_for_cylinder_along_z(center_x,center_y,radius,height_z):
@@ -24,7 +25,7 @@ def data_for_cylinder_along_z(center_x,center_y,radius,height_z):
 #Define Milky Way parameters
 h0=1000			#height of MW
 r0=100000  		#radius of MW
-N=10000	   		#number of binary WDs
+N=1000000	   		#number of binary WDs
 
 #Sun's parameters
 rhoS=25000
@@ -51,11 +52,13 @@ for i in np.arange(N):
     theta[i]=random.uniform(0, 2*np.pi)
     rho[i]=r0*np.sqrt(random.uniform(0,1.0))
     z[i]=random.uniform(0,h0)
-    psi[i]=random.uniform(0, 2*np.pi)
-    iota[i]=random.uniform(0, 2*np.pi)
+    psi[i]=np.pi/2
+    iota[i]=np.pi/2
     phi0[i]=random.uniform(0, 2*np.pi)
     omega[i]=random.uniform(10e-3, 10e-2)
-    
+    A0[i]=1.0
+    print '{}: done {}/{}'.format(tm.asctime(),i+1,N)
+
 x=rho*np.cos(theta)	#x coordinates of WDs
 y=rho*np.sin(theta)	#y coordinates of WD
 xS=rhoS*np.cos(thetaS)	#x coordinate of Sun
@@ -82,7 +85,7 @@ X_ec=r*np.sin(theta_ec)*np.cos(lon_ec)
 Y_ec=r*np.sin(theta_ec)*np.sin(lon_ec)
 Z_ec=r*np.cos(theta_ec)
 
-A0= 1.0/r #gravitational wave amplitude
+#A0= 1.0 #gravitational wave amplitude
 
 #Plot 3D graph
 fig = plt.figure()
@@ -122,9 +125,10 @@ for xd, yd, zd in zip(Xd, Yd, Zd):
 
 
 plt.show()
-
+print 'saving files'
 positions = np.array([[X, Y, Z],[r, lon_gal, lat_gal],[X_ec, Y_ec, Z_ec], [r, lon_ec, lat_ec]])
-pickle.dump(positions, open('WD_positions.sav', 'wb'))
+pickle.dump(positions, open('WD_positions_{}_const_iota_A0_psi.sav'.format(N), 'wb'))
 parameters = np.array([psi, iota, A0, omega, phi0]) 
-pickle.dump(parameters, open('WD_parameters.sav', 'wb'))
+pickle.dump(parameters, open('WD_parameters_{}_const_iota_A0_psi.sav'.format(N), 'wb'))
+print 'done'
 exit()

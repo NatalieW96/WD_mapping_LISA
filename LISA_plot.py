@@ -39,9 +39,9 @@ def response(A0, Omega, t, Phi0, psi, iota, l1, l2, h_ab, alpha, beta):
     Rz=np.array([[np.cos(alpha), np.sin(alpha), 0],[-np.sin(alpha), np.cos(alpha), 0],[0,0,1]])
     R_ec = np.matmul(Ry,Rz) #Euler angle transformation matrix from WD frame into ecliptic frame
     h_ab=np.matmul(np.matmul(np.transpose(R_ec),h_ab),R_ec)
-    h_ab2 = np.einsum('kil,lj->kij',np.einsum('ij,kjl->kil',np.transpose(R_ec),h_ab),R_ec) #Rotation of ecliptic
+    h_ab3 = np.einsum('kil,lj->kij',np.einsum('ij,kjl->kil',np.transpose(R_ec),h_ab),R_ec) #Rotation of ecliptic
     D_ij = (np.einsum('ki,kj->kij', l1, l1) - np.einsum('ki,kj->kij', l2, l2)) #response at LISA for WD q at time j
-    h_t = np.einsum('kij,kij->k',D_ij,h_ab2)
+    h_t = np.einsum('kij,kij->k',D_ij,h_ab3)
     return h_t
 
 #Function to give shape
@@ -58,20 +58,20 @@ def expectation(A0, psi, iota, l1, l2, h_ab, alpha, beta):
     Rz=np.array([[np.cos(alpha), np.sin(alpha), 0],[-np.sin(alpha), np.cos(alpha), 0],[0,0,1]])
     R_ec = np.matmul(Ry,Rz) #Euler angle transformation matrix from WD frame into ecliptic frame
     h_ab=np.matmul(np.matmul(np.transpose(R_ec),h_ab),R_ec)
-    h_ab2 = np.einsum('kil,lj->kij',np.einsum('ij,kjl->kil',np.transpose(R_ec),h_ab),R_ec) #Rotation of ecliptic
+    h_ab3 = np.einsum('kil,lj->kij',np.einsum('ij,kjl->kil',np.transpose(R_ec),h_ab),R_ec) #Rotation of ecliptic
     D_ij = (np.einsum('ki,kj->kij', l1, l1) - np.einsum('ki,kj->kij', l2, l2)) #response at LISA for WD q at time j
-    h_t = np.einsum('kij,kij->k',D_ij,h_ab2)
+    h_t = np.einsum('kij,kij->k',D_ij,h_ab3)
     return h_t
 
 
 #Load WD positions and parameter files
-with open('WD_positions.sav') as data:
+with open('WD_positions_1000000_const_iota.sav') as data:
     WD_pos=pickle.load(data)
-with open('WD_parameters.sav') as data:
+with open('WD_parameters_1000000_const_iota.sav') as data:
     WD_params=pickle.load(data)
 
 T=3.15e7		#seconds in a year
-N=10000			#number of time intervals
+N=100			#number of time intervals
 dt=T/N			#time interval
 df=1.0/T		#frequency interval
 phi0=0			#starting phi value	
@@ -85,9 +85,6 @@ V=np.zeros((N,3,3))	#vertices coordinates
 h_I1=np.zeros(N)   #total response interferomenter 1
 h_I2=np.zeros(N)   #total response interferomenter 2
 h_I3=np.zeros(N)   #total response interferomenter 3
-h_I1exp=np.zeros(N)   #total response interferomenter 1
-h_I2exp=np.zeros(N)   #total response interferomenter 2
-h_I3exp=np.zeros(N)   #total response interferomenter 3
 h_ab2=np.zeros((N,3,3))
 h_mod=np.zeros((N))	#modulus of response
 n=3			#number of arms
@@ -109,7 +106,7 @@ Z_WD=WD_pos[2]
 Z_WD=-Z_WD/np.sqrt(Z_WD[0]**2 + Z_WD[1]**2 + Z_WD[2]**2) #normalised WD Z axis vector in ecliptic frame
 alpha = np.arccos(-Z_WD[1]/np.sqrt(1-Z_WD[2]**2)) 
 beta = np.arccos(Z_WD[2])
-h_a_h_b_exp=np.zeros((N,3,3))
+h_a_h_b_exp=np.zeros((3,3,N))
 
 
 #Fill in l_i vector at each point in time for each arm
@@ -124,9 +121,8 @@ v_23=v_12+L*l_i[0]	#vertes at arm 2 and 3
 v_31=v_12+L*l_i[1]  #vertex at arm 3 and 1
 V=[v_12, v_23, v_31]	#array of vertices
 
-  
 #Go through each WD binary and calulate response at any given time
-
+fig=plt.figure()
 for q in np.arange(N_WD):
     h_i1=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
     h_I1 = h_I1 + h_i1 #sum all WD responses at time j
@@ -135,16 +131,24 @@ for q in np.arange(N_WD):
     h_i3=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
     h_I3 = h_I3 + h_i3 #sum all WD responses at time j
     h_i1exp=expectation(A0[q,0], psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
-    h_I1exp = h_I1exp + h_i1exp #sum all WD responses at time j
     h_i2exp=expectation(A0[q,0], psi[q,0], iota[q,0], l_i[:,1], l_i[:,2], h_ab2, alpha[q,0], beta[q,0])
-    h_I2exp = h_I2exp + h_i2exp #sum all WD responses at time j
     h_i3exp=expectation(A0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
-    h_I3exp = h_I3exp + h_i3exp #sum all WD responses at time j
-    print '{}: done {}/{}'.format(tm.asctime(),q+1,N_WD)
-    #expectation value calculations
+ 
+    h_a_h_b_exp= h_a_h_b_exp + np.array([[h_i1exp*h_i1exp,h_i1exp*h_i2exp,h_i1exp*h_i3exp],[h_i2exp*h_i1exp,h_i2exp*h_i2exp,h_i2exp*h_i3exp], [h_i3exp*h_i1exp,h_i3exp*h_i2exp,h_i3exp*h_i3exp]])
 
-h_a_h_b_exp= np.array([[h_I1exp*h_I1exp,h_I1exp*h_I2exp,h_I1exp*h_I3exp],[h_I2exp*h_I1exp,h_I2exp*h_I2exp,h_I2exp*h_I3exp], [h_I3exp*h_I1exp,h_I3exp*h_I2exp,h_I3exp*h_I3exp]])
-      
+#    print '{}: done {}/{}'.format(tm.asctime(),q+1,N_WD)
+    if q > 1 and np.log10(q+1)%1 == 0:
+        print q+1
+        plt.plot(time, h_a_h_b_exp[0,0]/q+1, alpha=1, label= q+1)
+#expectation value calculations
+plt.xlabel('Time (s)')
+plt.ylabel('<$h^{I}(t)><h^{I}(t)$>')
+plt.legend()
+plt.show()
+
+pickle.dump(h_a_h_b_exp, open('expectation_values_const_iota_A0_psi.sav', 'wb'))
+exit()
+
 h_a_h_b_exp=h_a_h_b_exp/N_WD
 fig = plt.figure()
 plt.plot(time, h_a_h_b_exp[0,0])
