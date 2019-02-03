@@ -63,11 +63,18 @@ def expectation(A0, psi, iota, l1, l2, h_ab, alpha, beta):
     h_t = np.einsum('kij,kij->k',D_ij,h_ab3)
     return h_t
 
+#Function to give SNR
+def SNR(h,f):
+    alpha=10**(-22.79)*(f/10**-3)**(-7/3)
+    beta=10**(-24.54)*(f/10**-3)
+    gamma=10**(-23.04)
+    noise=5.049e5*(alpha**2+beta**2+gamma**2)
+    return h/noise
 
 #Load WD positions and parameter files
-with open('WD_positions_1000000_const_iota.sav') as data:
+with open('WD_positions_1000000_const_iota_psi.sav') as data:
     WD_pos=pickle.load(data)
-with open('WD_parameters_1000000_const_iota.sav') as data:
+with open('WD_parameters_1000000_const_iota_psi.sav') as data:
     WD_params=pickle.load(data)
 
 T=3.15e7		#seconds in a year
@@ -133,9 +140,8 @@ for q in np.arange(N_WD):
     h_i1exp=expectation(A0[q,0], psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
     h_i2exp=expectation(A0[q,0], psi[q,0], iota[q,0], l_i[:,1], l_i[:,2], h_ab2, alpha[q,0], beta[q,0])
     h_i3exp=expectation(A0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
- 
-    h_a_h_b_exp= h_a_h_b_exp + np.array([[h_i1exp*h_i1exp,h_i1exp*h_i2exp,h_i1exp*h_i3exp],[h_i2exp*h_i1exp,h_i2exp*h_i2exp,h_i2exp*h_i3exp], [h_i3exp*h_i1exp,h_i3exp*h_i2exp,h_i3exp*h_i3exp]])
-
+    if SNR(Omega[q,0],max(h_i1exp))<10:
+        h_a_h_b_exp= h_a_h_b_exp + np.array([[h_i1exp*h_i1exp,h_i1exp*h_i2exp,h_i1exp*h_i3exp],[h_i2exp*h_i1exp,h_i2exp*h_i2exp,h_i2exp*h_i3exp], [h_i3exp*h_i1exp,h_i3exp*h_i2exp,h_i3exp*h_i3exp]])
 #    print '{}: done {}/{}'.format(tm.asctime(),q+1,N_WD)
     if q > 1 and np.log10(q+1)%1 == 0:
         print q+1
@@ -146,7 +152,10 @@ plt.ylabel('<$h^{I}(t)><h^{I}(t)$>')
 plt.legend()
 plt.show()
 
-pickle.dump(h_a_h_b_exp, open('expectation_values_const_iota_A0_psi.sav', 'wb'))
+pickle.dump(h_a_h_b_exp, open('expectation_values_const_iota_psi.sav', 'wb'))
+
+plt.hist(A0, bins='auto')
+plt.show()
 exit()
 
 h_a_h_b_exp=h_a_h_b_exp/N_WD

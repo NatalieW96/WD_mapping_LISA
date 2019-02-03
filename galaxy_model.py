@@ -23,14 +23,14 @@ def data_for_cylinder_along_z(center_x,center_y,radius,height_z):
     return x_grid,y_grid,z_grid
 
 #Define Milky Way parameters
-h0=1000			#height of MW
-r0=100000  		#radius of MW
+h0=1000*9.461e15			#height of MW
+r0=100000*9.461e15 		#radius of MW
 N=1000000	   		#number of binary WDs
 
 #Sun's parameters
 rhoS=25000
 thetaS=0.0
-zS=500
+zS=500*9.461e15
 beta= np.pi*60.2/180 #angle of ecliptic
 
 #Initialise coordinates
@@ -56,7 +56,6 @@ for i in np.arange(N):
     iota[i]=np.pi/2
     phi0[i]=random.uniform(0, 2*np.pi)
     omega[i]=random.uniform(10e-3, 10e-2)
-    A0[i]=1.0
     print '{}: done {}/{}'.format(tm.asctime(),i+1,N)
 
 x=rho*np.cos(theta)	#x coordinates of WDs
@@ -85,7 +84,11 @@ X_ec=r*np.sin(theta_ec)*np.cos(lon_ec)
 Y_ec=r*np.sin(theta_ec)*np.sin(lon_ec)
 Z_ec=r*np.cos(theta_ec)
 
-#A0= 1.0 #gravitational wave amplitude
+#Amplitude calculation
+M_WD=(1.989e30)*0.5	#WD mass
+D_WD=(1.496e11)*1000	#WD seperation distance
+A0=M_WD**2/D_WD
+A= A0/r  #gravitational wave amplitude
 
 #Plot 3D graph
 fig = plt.figure()
@@ -125,10 +128,11 @@ for xd, yd, zd in zip(Xd, Yd, Zd):
 
 
 plt.show()
+
 print 'saving files'
 positions = np.array([[X, Y, Z],[r, lon_gal, lat_gal],[X_ec, Y_ec, Z_ec], [r, lon_ec, lat_ec]])
-pickle.dump(positions, open('WD_positions_{}_const_iota_A0_psi.sav'.format(N), 'wb'))
-parameters = np.array([psi, iota, A0, omega, phi0]) 
-pickle.dump(parameters, open('WD_parameters_{}_const_iota_A0_psi.sav'.format(N), 'wb'))
+pickle.dump(positions, open('WD_positions_{}_const_iota_psi.sav'.format(N), 'wb'))
+parameters = np.array([psi, iota, A, omega, phi0]) 
+pickle.dump(parameters, open('WD_parameters_{}_const_iota_psi.sav'.format(N), 'wb'))
 print 'done'
 exit()
