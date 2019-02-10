@@ -28,7 +28,7 @@ r0=100000*9.461e15 		#radius of MW
 N=1000000	   		#number of binary WDs
 
 #Sun's parameters
-rhoS=25000
+rhoS=25000*9.461e15
 thetaS=0.0
 zS=500*9.461e15
 beta= np.pi*60.2/180 #angle of ecliptic
@@ -63,13 +63,14 @@ y=rho*np.sin(theta)	#y coordinates of WD
 xS=rhoS*np.cos(thetaS)	#x coordinate of Sun
 yS=rhoS*np.cos(thetaS)	#y coordinate of Sun
 
-#Cartesian coordinaes in system where Sun is origin and X-Y plane is galactic plane
+#Cartesian coordinates in system where Sun is origin and X-Y plane is galactic plane
 X=x-xS
 Y=y-yS
 Z=z-zS
 
 #Setting Galactic coordinates
 r = np.sqrt(X**2 +Y**2 +Z**2)
+print r
 theta_gal=np.arccos(Z/r)
 lon_gal=np.arctan2(Y,X)
 lat_gal=np.pi/2-theta_gal
@@ -86,8 +87,10 @@ Z_ec=r*np.cos(theta_ec)
 
 #Amplitude calculation
 M_WD=(1.989e30)*0.5	#WD mass
-D_WD=(1.496e11)*1000	#WD seperation distance
-A0=M_WD**2/D_WD
+D_WD=10**8	#WD seperation distance
+G=6.67e-11
+c=3e8
+A0=(G*(M_WD**2))/(D_WD*(c**4))
 A= A0/r  #gravitational wave amplitude
 
 #Plot 3D graph
