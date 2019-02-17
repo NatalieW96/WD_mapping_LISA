@@ -32,14 +32,14 @@ def SNR_check(theta,rho,z,thetaS,rhoS,zS,r_SNR):
 #Define Milky Way parameters
 h0=1000*9.461e15			#height of MW
 r0=6e20 		#radius of MW
-N=1000000	   		#number of binary WDs
+N=10000	   		#number of binary WDs
 
 #Sun's parameters
 rhoS=25000*9.461e15
 thetaS=0.0
 zS=500*9.461e15
 beta= np.pi*60.2/180 #angle of ecliptic
-r_SNR=2.523e18 #minimum distance for SNR boundry
+r_SNR=5e19 #minimum distance for SNR boundry
 
 #Initialise coordinates
 theta=np.zeros((N,1))
@@ -66,7 +66,7 @@ for i in np.arange(N):
         z[i]=z1
         psi[i]=np.pi/2
         iota[i]=np.pi/2
-        phi0[i]=random.uniform(0, 2*np.pi)
+        phi0[i]=random.uniform(0, np.pi)
         omega[i]=f
     else:
         i=i-1
@@ -147,10 +147,10 @@ plt.show()
 
 print 'saving files'
 positions = np.array([[X, Y, Z],[r, lon_gal, lat_gal],[X_ec, Y_ec, Z_ec], [r, lon_ec, lat_ec]])
-pickle.dump(positions, open('WD_positions_{}_const_iota_psi_exp.sav'.format(N), 'wb'))
+pickle.dump(positions, open('WD_positions_{}_const_iota_psi_data.sav'.format(N), 'wb'))
 WD_parameters = np.array([psi, iota, A, omega, phi0]) 
-pickle.dump(WD_parameters, open('WD_parameters_{}_const_iota_psi_exp.sav'.format(N), 'wb'))
+pickle.dump(WD_parameters, open('WD_parameters_{}_const_iota_psi_data.sav'.format(N), 'wb'))
 Gal_parameters= np.array([h0,r0,beta]) 
-pickle.dump(Gal_parameters, open('Gal_parameters_{}_const_iota_psi_exp.sav'.format(N), 'wb'))
+pickle.dump(Gal_parameters, open('Gal_parameters_{}_const_iota_psi_data.sav'.format(N), 'wb'))
 print 'done'
 exit()

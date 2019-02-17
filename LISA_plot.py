@@ -28,27 +28,12 @@ def phi_bar(phi0, T, t):
 
 #Function to give response
 def response(A0, Omega, t, Phi0, psi, iota, l1, l2, h_ab, alpha, beta):
-    h_plus = 0.5*(1+np.cos(iota)**2)*A0*np.sin(Omega*t - Phi0) #plus response from WD
-    h_x = np.cos(iota)*A0*np.cos(Omega*t - Phi0)	#cross response from WD
-    h_ab[:,0,0] = h_plus
-    h_ab[:,0,1] = h_x
-    h_ab[:,1,0] = h_x
-    h_ab[:,1,1] = -h_plus
-    R = np.array([[np.cos(psi),np.sin(psi), 0.0], [-np.sin(psi), np.cos(psi), 0.0], [0,0.0,1.0]])
-    h_ab = np.matmul(np.matmul(np.transpose(R),h_ab),R)
-    Ry=np.array([[np.cos(beta), 0, -np.sin(beta)],[0,1,0],[np.sin(beta),0,np.cos(beta)]]) #unnecessary?
-    Rz=np.array([[np.cos(alpha), np.sin(alpha), 0],[-np.sin(alpha), np.cos(alpha), 0],[0,0,1]])
-    R_ec = np.matmul(Ry,Rz) #Euler angle transformation matrix from WD frame into ecliptic frame
-    h_ab=np.matmul(np.matmul(np.transpose(R_ec),h_ab),R_ec)
-    h_ab3 = np.einsum('kil,lj->kij',np.einsum('ij,kjl->kil',np.transpose(R_ec),h_ab),R_ec) #Rotation of ecliptic
-    D_ij = (np.einsum('ki,kj->kij', l1, l1) - np.einsum('ki,kj->kij', l2, l2)) #response at LISA for WD q at time j
-    h_t = np.einsum('kij,kij->k',D_ij,h_ab3)
-    return h_t
-
-#Function to expectation response
-def expectation_response(A0, psi, iota, l1, l2, h_ab, alpha, beta):
-    h_plus = 0.5*(1+np.cos(iota)**2)*A0*1/np.sqrt(2) #plus response from WD
-    h_x = np.cos(iota)*A0*1/np.sqrt(2)	#cross response from WD
+    if Omega == 'false':
+	h_plus = 0.5*(1+np.cos(iota)**2)*A0*1/np.sqrt(2) #plus response from WD
+        h_x = np.cos(iota)*A0*1/np.sqrt(2)	#cross response from WD
+    else:
+        h_plus = 0.5*(1+np.cos(iota)**2)*A0*np.sin(Omega*t - Phi0) #plus response from WD
+        h_x = np.cos(iota)*A0*np.cos(Omega*t - Phi0)	#cross response from WD
     h_ab[:,0,0] = h_plus
     h_ab[:,0,1] = h_x
     h_ab[:,1,0] = h_x
@@ -110,17 +95,13 @@ def parameter_extraction(params, pos):
 
 #Function to give the expectation values
 def expectation(N_WD, A0, psi, iota, l_i, h_ab2, alpha, beta, h_a_h_b_exp):
-    fig=plt.figure()
     for q in np.arange(N_WD):
-        h_i1exp=expectation_response(A0[q,0], psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
-        h_i2exp=expectation_response(A0[q,0], psi[q,0], iota[q,0], l_i[:,1], l_i[:,2], h_ab2, alpha[q,0], beta[q,0])
-        h_i3exp=expectation_response(A0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
+        h_i1exp=response(A0[q,0],'false', 'false','false',psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
+        h_i2exp=response(A0[q,0],'false', 'false','false', psi[q,0], iota[q,0], l_i[:,1], l_i[:,2], h_ab2, alpha[q,0], beta[q,0])
+        h_i3exp=response(A0[q,0], 'false', 'false','false',psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
         h_a_h_b_exp= h_a_h_b_exp + np.array([[h_i1exp*h_i1exp,h_i1exp*h_i2exp,h_i1exp*h_i3exp],[h_i2exp*h_i1exp,h_i2exp*h_i2exp,h_i2exp*h_i3exp], [h_i3exp*h_i1exp,h_i3exp*h_i2exp,h_i3exp*h_i3exp]])
         if q > 1 and np.log10(q+1)%1 == 0:
             print q+1
-            plt.plot(time, h_a_h_b_exp[0,0]/(q+1), alpha=1, label= q+1) 
-            plt.show()
-            break
     return h_a_h_b_exp
 
 #Function to give the simulated data
@@ -132,7 +113,6 @@ def signal(N_WD,A0,Omega,time,Phi0,psi,iota,l_i,h_ab2, alpha, beta, h_I1, h_I2, 
         h_I2 = h_I2 + h_i2 
         h_i3=response(A0[q,0], Omega[q,0], time, Phi0[q,0], psi[q,0], iota[q,0], l_i[:,2], l_i[:,0], h_ab2, alpha[q,0], beta[q,0])
         h_I3 = h_I3 + h_i3
-        break
     return np.array([h_I1, h_I2, h_I3])
 
 T=3.15e7		#seconds in a year
@@ -143,13 +123,14 @@ R=1.496e11		#earth sun distance
 L=5.0e10		#length of LISA arms
 z_c=0.0			#LISA orbit plane in x, y
 omega=2*np.pi/T		#angular speed of orbit
-
+N_data=10000
+N_exp=1000000
 #Load WD positions and parameter files
-with open('WD_positions_1000000_const_iota_psi_data.sav') as data:
+with open('WD_positions_{}_const_iota_psi_data.sav'.format(N_data)) as data:
     WD_pos_data=pickle.load(data)
-with open('WD_parameters_1000000_const_iota_psi_data.sav') as data:
+with open('WD_parameters_{}_const_iota_psi_data.sav'.format(N_data)) as data:
     WD_params_data=pickle.load(data)
-with open('Gal_parameters_1000000_const_iota_psi_data.sav') as data:
+with open('Gal_parameters_{}_const_iota_psi_data.sav'.format(N_data)) as data:
     Gal_params_data=pickle.load(data)
 
 #Check if expectation values have already been generated, and load if so
@@ -159,11 +140,11 @@ if os.path.isfile('./expectation_values_{}_{}_{}_const_iota_psi.sav'.format(Gal_
     print "expectation values recovered"
 else:
     print "expectation values must be created"
-    with open('WD_positions_1000000_const_iota_psi_exp.sav') as data:
+    with open('WD_positions_{}_const_iota_psi_exp.sav'.format(N_exp)) as data:
         WD_pos_exp=pickle.load(data)
-    with open('WD_parameters_1000000_const_iota_psi_exp.sav') as data:
+    with open('WD_parameters_{}_const_iota_psi_exp.sav'.format(N_exp)) as data:
         WD_params_exp=pickle.load(data)
-    with open('Gal_parameters_1000000_const_iota_psi_exp.sav') as data:
+    with open('Gal_parameters_{}_const_iota_psi_exp.sav'.format(N_exp)) as data:
         Gal_params_exp=pickle.load(data)
     if (Gal_params_data !=Gal_params_exp).all():		#Check that galaxy parameters are consistant between data and expectation values
         print "Error: Galaxy parameters must be the same" 
@@ -179,8 +160,30 @@ else:
     exp_values = expectation(N_WD, A0, psi, iota, l_i, h_ab2, alpha, beta, h_a_h_b_exp)		#create expectation values
     pickle.dump(exp_values, open('expectation_values_{}_{}_{}_const_iota_psi.sav'.format(Gal_params_exp[0],Gal_params_exp[1],Gal_params_exp[2]), 'wb'))
     print "Expectation values saved"
+    fig = plt.figure()
+    plt.subplot(2,3,1)
+    plt.plot(time, exp_values[0,0])
+    plt.ylabel('<$h^{I}(t)><h^{I}(t)$>')
+    plt.subplot(2,3,2)
+    plt.plot(time, exp_values[1,1])
+    plt.ylabel('<$h^{II}(t)><h^{II}(t)$>')
+    plt.subplot(2,3,3)
+    plt.plot(time, exp_values[2,2])
+    plt.ylabel('<$h^{III}(t)><h^{III}(t)$>')
+    plt.subplot(2,3,4)
+    plt.plot(time, exp_values[0,1])
+    plt.ylabel('<$h^{I}(t)><h^{II}(t)$>')
+    plt.subplot(2,3,5)
+    plt.plot(time, exp_values[1,2])
+    plt.ylabel('<$h^{II}(t)><h^{III}(t)$>')
+    plt.subplot(2,3,6)
+    plt.plot(time, exp_values[0,2])
+    plt.ylabel('<$h^{III}(t)><h^{I}(t)$>')
+    fig.text(0.5, 0.04, 'time (s)', ha='center')
+    plt.show()
+    exit()
 #Data generation
-N=100				#number of time intervals
+N=10000		#number of time intervals
 dt=T/N
 time = np.arange(0,T,dt)
 l_i= arm_vectors(n,N,T,phi0, alpha0, time)	#create arm vectors for N time segments
@@ -191,6 +194,22 @@ h_I3=np.zeros(N)   #total response interferomenter 3
 h_ab2=np.zeros((N,3,3))	
 h_ab=np.zeros((N_WD,N,3,3))#signal tensor for WDs
 data= signal(N_WD,A0,Omega,time,Phi0,psi,iota,l_i,h_ab2, alpha, beta, h_I1, h_I2, h_I3)		#create signal for each LISA arm
+
+fig=plt.figure()
+plt.plot(A0,
+
+fig = plt.figure()
+plt.subplot(1,3,1)
+plt.plot(time, data[0]**2)
+plt.ylabel('$h^{I}(t)^{2}$')
+plt.subplot(1,3,2)
+plt.plot(time, data[1]**2)
+plt.ylabel('$h^{II}(t)^{2}$')
+plt.subplot(1,3,3)
+plt.plot(time, data[2]**2)
+plt.ylabel('$h^{II}(t)^{2}$')
+fig.text(0.5, 0.04, 'time (s)', ha='center')
+plt.show()
 exit()
 
 
