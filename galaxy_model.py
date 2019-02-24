@@ -29,6 +29,22 @@ def SNR_check(theta,rho,z,thetaS,rhoS,zS,r_SNR):
     else:
         return 0
 
+#Function to give SNR
+def SNR(h,f):
+    alpha=10**(-22.79)*(f/10**-3)**(-7.0/3.0)
+    beta=10**(-24.54)*(f/10**-3)
+    gamma=10**(-23.04)
+    noise=np.sqrt(5.049e5*(alpha**2+beta**2+gamma**2))
+    return h*np.sqrt(3.15e7)/noise
+
+def amplitude(f, rad):
+    M_WD=1.989e30
+    D_WD=10**8
+    G=6.67e-11
+    c=3e8
+    A0=32*np.pi**2*(G*M_WD*(D_WD**2)*(f**2))/(c**4)
+    return A0/rad
+
 #Define Milky Way parameters
 h0=1000*9.461e15			#height of MW
 r0=6e20 		#radius of MW
@@ -39,7 +55,7 @@ rhoS=25000*9.461e15
 thetaS=0.0
 zS=500*9.461e15
 beta= np.pi*60.2/180 #angle of ecliptic
-r_SNR=5e19 #minimum distance for SNR boundry
+SNR_boundry=0.1 #minimum distance for SNR boundry
 
 #Initialise coordinates
 theta=np.zeros((N,1))
@@ -60,14 +76,17 @@ for i in np.arange(N):
     theta1=random.uniform(0, 2*np.pi)
     rho1=r0*np.sqrt(random.uniform(0,1.0))
     z1=random.uniform(0,h0)
-    if SNR_check(theta1,rho1,z1,thetaS,rhoS,zS,r_SNR)==1:
+    freq=f
+    rad= np.sqrt((rho1*np.cos(theta1)-rhoS*np.cos(thetaS))**2 +(rho1*np.sin(theta1)-rhoS*np.cos(thetaS))**2 +(z1-zS)**2)
+    Amp=amplitude(freq,rad)
+    if SNR(Amp,freq)<SNR_boundry:
         theta[i]=theta1
         rho[i]=rho1
         z[i]=z1
-        psi[i]=np.pi/2
-        iota[i]=np.pi/2
+        psi[i]=random.uniform(0, np.pi)
+        iota[i]=random.uniform(0, np.pi)
         phi0[i]=random.uniform(0, np.pi)
-        omega[i]=f
+        omega[i]=freq
     else:
         i=i-1
     print '{}: done {}/{}'.format(tm.asctime(),i+1,N)
@@ -105,6 +124,7 @@ G=6.67e-11
 c=3e8
 A0=32*np.pi**2*(G*M_WD*(D_WD**2)*(f**2))/(c**4)
 A= A0/r  #gravitational wave amplitude
+SNR_values=SNR(A,f)
 
 #Plot 3D graph
 fig = plt.figure()
@@ -142,7 +162,9 @@ Zd = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][2].flatten() + 0.5*(Z.max()+Z.
 for xd, yd, zd in zip(Xd, Yd, Zd):
    ax.plot([xd], [yd], [zd], 'w')
 
-
+fig = plt.figure()
+plt.hist(SNR_values,1000)
+plt.xlabel("SNR")
 plt.show()
 
 print 'saving files'

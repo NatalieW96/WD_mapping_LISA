@@ -51,7 +51,7 @@ def response(A0, Omega, t, Phi0, psi, iota, l1, l2, h_ab, alpha, beta):
 
 #Function to give SNR
 def SNR(h,f):
-    alpha=10**(-22.79)*(f/10**-3)**(-7/3)
+    alpha=10**(-22.79)*(f/10**-3)**(-7.0/3.0)
     beta=10**(-24.54)*(f/10**-3)
     gamma=10**(-23.04)
     noise=np.sqrt(5.049e5*(alpha**2+beta**2+gamma**2))
@@ -95,6 +95,7 @@ def parameter_extraction(params, pos):
 
 #Function to give the expectation values
 def expectation(N_WD, A0, psi, iota, l_i, h_ab2, alpha, beta, h_a_h_b_exp):
+    fig=plt.figure()
     for q in np.arange(N_WD):
         h_i1exp=response(A0[q,0],'false', 'false','false',psi[q,0], iota[q,0], l_i[:,0], l_i[:,1], h_ab2, alpha[q,0], beta[q,0])
         h_i2exp=response(A0[q,0],'false', 'false','false', psi[q,0], iota[q,0], l_i[:,1], l_i[:,2], h_ab2, alpha[q,0], beta[q,0])
@@ -102,6 +103,7 @@ def expectation(N_WD, A0, psi, iota, l_i, h_ab2, alpha, beta, h_a_h_b_exp):
         h_a_h_b_exp= h_a_h_b_exp + np.array([[h_i1exp*h_i1exp,h_i1exp*h_i2exp,h_i1exp*h_i3exp],[h_i2exp*h_i1exp,h_i2exp*h_i2exp,h_i2exp*h_i3exp], [h_i3exp*h_i1exp,h_i3exp*h_i2exp,h_i3exp*h_i3exp]])
         if q > 1 and np.log10(q+1)%1 == 0:
             print q+1
+            plt.plot(time, h_a_h_b_exp[0,0]/(q+1), alpha=1, label= q+1)
     return h_a_h_b_exp
 
 #Function to give the simulated data
@@ -160,25 +162,32 @@ else:
     exp_values = expectation(N_WD, A0, psi, iota, l_i, h_ab2, alpha, beta, h_a_h_b_exp)		#create expectation values
     pickle.dump(exp_values, open('expectation_values_{}_{}_{}_const_iota_psi.sav'.format(Gal_params_exp[0],Gal_params_exp[1],Gal_params_exp[2]), 'wb'))
     print "Expectation values saved"
+    plt.show()
     fig = plt.figure()
-    plt.subplot(2,3,1)
-    plt.plot(time, exp_values[0,0])
+    ax1=plt.subplot(2,3,1)
+    ax1.plot(time, exp_values[0,0])
     plt.ylabel('<$h^{I}(t)><h^{I}(t)$>')
-    plt.subplot(2,3,2)
-    plt.plot(time, exp_values[1,1])
+#    ax1.set_ylim(0,0.3e-42)
+    ax2=plt.subplot(2,3,2)
+    ax2.plot(time, exp_values[1,1])
     plt.ylabel('<$h^{II}(t)><h^{II}(t)$>')
-    plt.subplot(2,3,3)
-    plt.plot(time, exp_values[2,2])
+#    ax2.set_ylim(0,0.3e-42)
+    ax3=plt.subplot(2,3,3)
+    ax3.plot(time, exp_values[2,2])
     plt.ylabel('<$h^{III}(t)><h^{III}(t)$>')
-    plt.subplot(2,3,4)
-    plt.plot(time, exp_values[0,1])
+#    ax3.set_ylim(0,0.3e-42)
+    ax4=plt.subplot(2,3,4)
+    ax4.plot(time, exp_values[0,1])
     plt.ylabel('<$h^{I}(t)><h^{II}(t)$>')
-    plt.subplot(2,3,5)
-    plt.plot(time, exp_values[1,2])
+#    ax4.set_ylim(-2e-43,1e-43)
+    ax5=plt.subplot(2,3,5)
+    ax5.plot(time, exp_values[1,2])
     plt.ylabel('<$h^{II}(t)><h^{III}(t)$>')
-    plt.subplot(2,3,6)
-    plt.plot(time, exp_values[0,2])
+#    ax5.set_ylim(-2e-43,1e-43)
+    ax6=plt.subplot(2,3,6)
+    ax6.plot(time, exp_values[0,2])
     plt.ylabel('<$h^{III}(t)><h^{I}(t)$>')
+#    ax6.set_ylim(-2e-43,1e-43)
     fig.text(0.5, 0.04, 'time (s)', ha='center')
     plt.show()
     exit()
@@ -194,9 +203,6 @@ h_I3=np.zeros(N)   #total response interferomenter 3
 h_ab2=np.zeros((N,3,3))	
 h_ab=np.zeros((N_WD,N,3,3))#signal tensor for WDs
 data= signal(N_WD,A0,Omega,time,Phi0,psi,iota,l_i,h_ab2, alpha, beta, h_I1, h_I2, h_I3)		#create signal for each LISA arm
-
-fig=plt.figure()
-plt.plot(A0,
 
 fig = plt.figure()
 plt.subplot(1,3,1)
